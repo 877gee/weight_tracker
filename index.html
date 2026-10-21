@@ -80,25 +80,28 @@
   <!-- Main Container -->
   <main class="w-full max-w-[430px] sm:max-w-[480px] mx-auto flex flex-col justify-start py-0">
     
-    <!-- Top Header: Month & Year on the Left, Actions on the Right -->
-    <header class="flex items-center justify-between mb-4 sm:mb-6 px-1">
-      <div class="flex items-center gap-2">
-        <h1 id="month-display" class="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900 select-none transition-colors">
-          October 2026
-        </h1>
-        <!-- Subtle month navigation controls -->
-        <div class="flex items-center ml-1">
-          <button id="prev-month-btn" class="p-1.5 text-slate-600 hover:text-slate-900 rounded-full active:scale-95 transition-all" title="이전 달">
+    <!-- Top Header: Month & Year on the Left (2 lines: Month on top, Year below), Actions on the Right -->
+    <header class="flex items-start justify-between mb-3 sm:mb-5 px-1">
+      <h1 id="month-display" class="flex flex-col select-none">
+        <span id="month-name" class="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900 leading-tight transition-colors">
+          October
+        </span>
+        <span id="year-name" class="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900 leading-tight transition-colors">
+          2026
+        </span>
+      </h1>
+
+      <!-- Action Buttons: Navigation arrows, Shuffle, Today, Stats -->
+      <div class="flex items-center gap-2 sm:gap-3 pt-1">
+        <!-- Month navigation controls -->
+        <div class="flex items-center">
+          <button id="prev-month-btn" class="p-1 text-slate-600 hover:text-slate-900 rounded-full active:scale-95 transition-all" title="이전 달">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M15 19l-7-7 7-7"/></svg>
           </button>
-          <button id="next-month-btn" class="p-1.5 text-slate-600 hover:text-slate-900 rounded-full active:scale-95 transition-all" title="다음 달">
+          <button id="next-month-btn" class="p-1 text-slate-600 hover:text-slate-900 rounded-full active:scale-95 transition-all" title="다음 달">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M9 5l7 7-7 7"/></svg>
           </button>
         </div>
-      </div>
-
-      <!-- Action Buttons: Shuffle, Today, Stats -->
-      <div class="flex items-center gap-3">
         <!-- Palette Shuffle Button (Text/Icon only, no box, no border) -->
         <button id="color-shuffle-btn" class="p-1 text-slate-500 hover:text-slate-900 active:scale-95 transition-colors bg-transparent border-0" title="배경색 바꾸기">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -123,11 +126,7 @@
       <!-- Generated dynamically by JavaScript -->
     </section>
 
-    <!-- Active Tool Status Indicator Bar (shown when dot tool is active) -->
-    <div id="tool-status-bar" class="mt-2.5 flex items-center justify-center transition-all opacity-0 pointer-events-none">
-      <div id="tool-status-text" class="px-3.5 py-1 rounded-full text-xs font-medium shadow-xs border backdrop-blur-xs flex items-center gap-1.5 transition-all">
-      </div>
-    </div>
+
 
   </main>
 
@@ -260,7 +259,8 @@
       document.body.style.backgroundColor = color;
 
       const dark = isDark(color);
-      const monthTitle = document.getElementById("month-display");
+      const monthName = document.getElementById("month-name");
+      const yearName = document.getElementById("year-name");
       const prevBtn = document.getElementById("prev-month-btn");
       const nextBtn = document.getElementById("next-month-btn");
       const todayBtn = document.getElementById("today-btn");
@@ -268,16 +268,18 @@
       const statsBtn = document.getElementById("open-stats-btn");
 
       if (dark) {
-        monthTitle.className = "text-2xl sm:text-3xl font-semibold tracking-tight text-white select-none transition-colors";
-        prevBtn.className = "p-1.5 text-white/90 hover:text-white rounded-full active:scale-95 transition-all";
-        nextBtn.className = "p-1.5 text-white/90 hover:text-white rounded-full active:scale-95 transition-all";
+        monthName.className = "text-2xl sm:text-3xl font-semibold tracking-tight text-white leading-tight transition-colors";
+        yearName.className = "text-2xl sm:text-3xl font-semibold tracking-tight text-white leading-tight transition-colors";
+        prevBtn.className = "p-1 text-white/90 hover:text-white rounded-full active:scale-95 transition-all";
+        nextBtn.className = "p-1 text-white/90 hover:text-white rounded-full active:scale-95 transition-all";
         todayBtn.className = "text-xs font-medium text-white/80 hover:text-white active:scale-95 transition-colors bg-transparent border-0";
         shuffleBtn.className = "p-1 text-white/80 hover:text-white active:scale-95 transition-colors bg-transparent border-0";
         statsBtn.className = "w-8 h-8 rounded-full flex items-center justify-center text-white bg-white/15 border border-white/40 hover:bg-white/25 transition-all active:scale-95";
       } else {
-        monthTitle.className = "text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900 select-none transition-colors";
-        prevBtn.className = "p-1.5 text-slate-600 hover:text-slate-900 rounded-full active:scale-95 transition-all";
-        nextBtn.className = "p-1.5 text-slate-600 hover:text-slate-900 rounded-full active:scale-95 transition-all";
+        monthName.className = "text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900 leading-tight transition-colors";
+        yearName.className = "text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900 leading-tight transition-colors";
+        prevBtn.className = "p-1 text-slate-600 hover:text-slate-900 rounded-full active:scale-95 transition-all";
+        nextBtn.className = "p-1 text-slate-600 hover:text-slate-900 rounded-full active:scale-95 transition-all";
         todayBtn.className = "text-xs font-medium text-slate-600 hover:text-slate-900 active:scale-95 transition-colors bg-transparent border-0";
         shuffleBtn.className = "p-1 text-slate-600 hover:text-slate-900 active:scale-95 transition-colors bg-transparent border-0";
         statsBtn.className = "w-8 h-8 rounded-full flex items-center justify-center text-slate-700 hover:text-slate-900 bg-white/30 border border-slate-400/60 hover:bg-white/40 transition-all active:scale-95";
@@ -328,36 +330,32 @@
       }
     }
 
-    // Initialize initial sample data if first visit
+    // Clean up any old March test data and ensure clean storage
+    function cleanupMarchTestData() {
+      try {
+        const records = loadRecords();
+        if (records) {
+          let changed = false;
+          Object.keys(records).forEach(k => {
+            if (k.startsWith("2026-03-")) {
+              delete records[k];
+              changed = true;
+            }
+          });
+          if (changed) {
+            saveRecords(records);
+          }
+        }
+      } catch (e) {
+        console.warn("cleanupMarchTestData failed:", e);
+      }
+    }
+
     function initDataIfEmpty() {
+      cleanupMarchTestData();
       let data = loadRecords();
       if (!data) {
-        data = {
-          "2026-03-01": "64.2",
-          "2026-03-02": "64.0",
-          "2026-03-03": "63.9",
-          "2026-03-04": "64.1",
-          "2026-03-05": "63.7",
-          "2026-03-06": "63.5",
-          "2026-03-07": "63.6",
-          "2026-03-08": "63.4",
-          "2026-03-09": "63.2",
-          "2026-03-10": "63.3",
-          "2026-03-11": "63.0",
-          "2026-03-12": "62.8",
-          "2026-03-13": "62.9",
-          "2026-03-14": "62.6",
-          "2026-03-15": "62.4",
-          "2026-03-16": "62.3",
-          "2026-10-01": "63.5",
-          "2026-10-02": "63.3",
-          "2026-10-05": "63.1",
-          "2026-10-08": "62.9",
-          "2026-10-12": "62.6",
-          "2026-10-15": "62.4",
-          "2026-10-18": "62.1",
-          "2026-10-21": "61.8"
-        };
+        data = {};
         saveRecords(data);
       }
       return data;
@@ -386,27 +384,12 @@
       }, 2000);
     }
 
-    // Update floating status bar for active tool
-    function updateToolStatusBar() {
-      const bar = document.getElementById("tool-status-bar");
-      const textEl = document.getElementById("tool-status-text");
-      if (activeTool === 'red') {
-        bar.style.opacity = "1";
-        textEl.className = "px-3.5 py-1 rounded-full text-xs font-semibold shadow-xs border backdrop-blur-xs flex items-center gap-1.5 bg-rose-50/90 text-rose-600 border-rose-200";
-        textEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-rose-500"></span><span>생리 주기 모드</span>';
-      } else if (activeTool === 'black') {
-        bar.style.opacity = "1";
-        textEl.className = "px-3.5 py-1 rounded-full text-xs font-semibold shadow-xs border backdrop-blur-xs flex items-center gap-1.5 bg-slate-100/90 text-slate-800 border-slate-300";
-        textEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-slate-800"></span><span>미측정 모드</span>';
-      } else {
-        bar.style.opacity = "0";
-      }
-    }
+
 
     // Render Calendar
     function renderCalendar() {
-      const displayEl = document.getElementById("month-display");
-      displayEl.textContent = `${monthNames[viewMonth]} ${viewYear}`;
+      document.getElementById("month-name").textContent = monthNames[viewMonth];
+      document.getElementById("year-name").textContent = viewYear;
 
       const gridEl = document.getElementById("calendar-grid");
       gridEl.innerHTML = "";
@@ -519,7 +502,7 @@
           if (activeTool !== 'none') {
             activeTool = 'none';
             updateToolButtonsUI();
-            updateToolStatusBar();
+            
           }
         });
 
@@ -632,7 +615,7 @@
           showToast("생리 주기 모드");
         }
         updateToolButtonsUI();
-        updateToolStatusBar();
+        
       });
 
       // Column 7: Black Dot Button (Dot only, 4px white ring when selected)
@@ -656,7 +639,7 @@
           showToast("미측정 모드");
         }
         updateToolButtonsUI();
-        updateToolStatusBar();
+        
       });
 
       gridEl.appendChild(redToolCard);
