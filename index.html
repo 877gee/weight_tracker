@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minimal Weight Tracker</title>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <!-- Chart.js for Monthly and Yearly Stats -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+  <style>
+    * {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    body {
+      background-color: #E7F8FF;
+      font-feature-settings: 'tnum' on, 'cv05' on;
+      -webkit-tap-highlight-color: transparent;
+      transition: background-color 0.4s ease, color 0.3s ease;
+    }
+    /* Hide number input spinners */
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type=number] {
+      -moz-appearance: textfield;
+    }
+    .day-card {
+      background-color: #ffffff;
+      border-radius: 14px;
+      transition: transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+    }
+    .day-card:hover {
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+      transform: translateY(-1px);
+    }
+    /* 오늘 날짜 카드: 쉐도우를 더 찐하고 입체감 있게 강조 */
+    .day-card.today-card {
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14), 0 2px 6px rgba(0, 0, 0, 0.08);
+    }
+    .day-card.today-card:hover {
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18), 0 3px 8px rgba(0, 0, 0, 0.10);
+      transform: translateY(-1px);
+    }
+    /* 파란색 획 없이 부드러운 소프트 섀도우만 */
+    .day-card:focus-within {
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+      transform: translateY(-1px);
+    }
+    /* Custom scrollbar for stats modal */
+    .custom-scroll::-webkit-scrollbar {
+      width: 5px;
+    }
+    .custom-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body id="app-body" class="min-h-screen text-slate-800 flex flex-col items-center justify-start p-4 sm:p-8 selection:bg-slate-200">
+
+  <!-- Main Container -->
+  <main class="w-full max-w-[430px] sm:max-w-[480px] mx-auto py-2 sm:py-6">
+    
+    <!-- Top Header: Month & Year on the Left, Actions on the Right -->
+    <header class="flex items-center justify-between mb-5 sm:mb-7 px-1">
+      <div class="flex items-center gap-2">
+        <h1 id="month-display" class="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900 select-none transition-colors">
+          March 2026
+        </h1>
+        <!-- Subtle month navigation controls -->
+        <div class="flex items-center ml-1">
+          <button id="prev-month-btn" class="p-1.5 text-slate-400 hover:text-slate-800 rounded-full active:scale-95 transition-all" title="이전 달">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+          </button>
+          <button id="next-month-btn" class="p-1.5 text-slate-400 hover:text-slate-800 rounded-full active:scale-95 transition-all" title="다음 달">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Action Buttons: Shuffle & Today (Text only, no box/border), Stats (Outline only) -->
+      <div class="flex items-center gap-3">
+        <!-- Palette Shuffle Button (Text/Icon only, no box, no border) -->
+        <button id="color-shuffle-btn" class="p-1 text-slate-500 hover:text-slate-900 active:scale-95 transition-colors bg-transparent border-0" title="배경색 바꾸기">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+          </svg>
+        </button>
+        <!-- Today Button (Text only, no box, no border) -->
+        <button id="today-btn" class="text-xs font-medium text-slate-500 hover:text-slate-900 active:scale-95 transition-colors bg-transparent border-0" title="이번 달로 이동">
+          Today
+        </button>
+        <!-- Statistics Button (Outline only, no fill) -->
+        <button id="open-stats-btn" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 hover:text-slate-900 bg-transparent border border-slate-300 hover:border-slate-400 rounded-full transition-all active:scale-95" title="통계 보기">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+          </svg>
+          <span class="tracking-tight">통계</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Calendar Grid (7 columns matching reference image) -->
+    <section id="calendar-grid" class="grid grid-cols-7 gap-2 sm:gap-2.5" aria-label="날짜별 몸무게 입력 그리드">
+      <!-- Generated dynamically by JavaScript -->
+    </section>
+
+  </main>
+
+  <!-- Statistics Popup Modal (Monthly & Yearly) -->
+  <div id="stats-modal" class="fixed inset-0 bg-slate-900/35 backdrop-blur-xs hidden items-center justify-center p-4 z-50 transition-opacity duration-200" role="dialog" aria-modal="true" aria-labelledby="stats-title">
+    <div id="stats-modal-box" class="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl relative transform transition-all duration-200 custom-scroll max-h-[92vh] overflow-y-auto">
+      
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+        <div>
+          <h2 id="stats-title" class="text-xl font-semibold text-slate-900 tracking-tight">March 2026 통계</h2>
+          <p id="stats-subtitle" class="text-xs text-slate-400 mt-0.5 font-normal">몸무게 변화 요약</p>
+        </div>
+        <button id="close-stats-btn" class="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors" aria-label="닫기">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Minimalist Underline Tabs (월별 통계 / 연간 통계) -->
+      <div class="flex items-center justify-center gap-6 mb-5 border-b border-slate-100 pb-2">
+        <button id="tab-month-btn" class="text-xs font-semibold pb-1.5 border-b-2 border-slate-900 text-slate-900 transition-all cursor-pointer">
+          월별 통계
+        </button>
+        <button id="tab-year-btn" class="text-xs font-medium pb-1.5 border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition-all cursor-pointer">
+          연간 통계
+        </button>
+      </div>
+
+      <!-- Key Metrics Overview Grid: 변화량 (Plum 포인트 #673141), 평균, 최저 / 최고 -->
+      <div id="metrics-grid" class="grid grid-cols-3 gap-2.5 mb-5">
+        <div class="bg-[#FAF0F2] rounded-2xl p-3 flex flex-col items-center text-center border border-[#673141]/10">
+          <span class="text-[11px] font-semibold text-[#673141] mb-1">변화량</span>
+          <span id="metric-diff" class="text-base font-semibold text-[#673141] tracking-tight">—</span>
+        </div>
+        <div class="bg-slate-50/80 rounded-2xl p-3 flex flex-col items-center text-center">
+          <span class="text-[11px] font-medium text-slate-400 mb-1">평균</span>
+          <span id="metric-avg" class="text-base font-semibold text-slate-700 tracking-tight">—</span>
+        </div>
+        <div class="bg-slate-50/80 rounded-2xl p-3 flex flex-col items-center text-center">
+          <span class="text-[11px] font-medium text-slate-400 mb-1">최저 / 최고</span>
+          <span id="metric-minmax" class="text-xs font-semibold text-slate-700 tracking-tight mt-0.5">—</span>
+        </div>
+      </div>
+
+      <!-- Weight Trend Chart Container (Plum accent line) -->
+      <div class="mb-5">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-semibold text-slate-700">몸무게 변화 그래프</span>
+        </div>
+        <div class="relative h-56 w-full bg-slate-50/50 rounded-2xl p-2 border border-slate-100">
+          <canvas id="stats-chart"></canvas>
+          <div id="chart-empty-state" class="absolute inset-0 hidden items-center justify-center text-xs text-slate-400">
+            기록된 몸무게가 없습니다.
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Footer (내보내기 & 닫기만 유지, 이번달 비우기 제거) -->
+      <div class="flex items-center justify-between pt-2">
+        <button id="export-data-btn" class="flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 px-3 py-1.5 rounded-full bg-slate-100/90 hover:bg-slate-200 transition-colors" title="기록 CSV 내보내기 및 브라우저 저장">
+          <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          <span>내보내기</span>
+        </button>
+        <button id="modal-done-btn" class="px-4 py-2 bg-slate-900 hover:bg-slate-800 active:scale-95 text-white text-xs font-medium rounded-full transition-all">
+          닫기
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Toast Notification for subtle feedback -->
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white text-xs px-4 py-2 rounded-full shadow-lg opacity-0 pointer-events-none transition-opacity duration-300 z-50">
+  </div>
+
+  <script>
+    // 6 Color Palette from user image:
+    // MATCHA: #CAC488
+    // BUTTER YELLOW: #F0DDB2
+    // ORCHID: #D4C0DC
+    // ICEY BLUE: #E7F8FF
+    // PEPPERMINT: #DCEECE
+    // PLUM: #673141
+    const COLOR_PALETTE = [
+      "#CAC488",
+      "#F0DDB2",
+      "#D4C0DC",
+      "#E7F8FF",
+      "#DCEECE",
+      "#673141"
+    ];
+
+    // State management
+    const monthNames = [
+      "January", "February", "March", "April", "May", "June", 
+      "July", "August", "September", "October", "November", "December"
+    ];
+
+    // Default to current date so today is immediately visible, with smooth month navigation
+    const initialNow = new Date();
+    let viewYear = initialNow.getFullYear();
+    let viewMonth = initialNow.getMonth();
+
+    // Current Stats Tab Mode: 'month' | 'year'
+    let currentStatsMode = 'month';
+
+    // Storage key
+    const STORAGE_KEY = "minimal_weight_tracker_records";
+
+    // Chart instance
+    let chartInstance = null;
+
+    // Helper: test if color is dark to adjust header contrast
+    function isDark(hex) {
+      const c = hex.replace('#', '');
+      const r = parseInt(c.substr(0, 2), 16);
+      const g = parseInt(c.substr(2, 2), 16);
+      const b = parseInt(c.substr(4, 2), 16);
+      const hsp = Math.sqrt(0.299 * (r * r) + 0.587 * (g * g) + 0.114 * (b * b));
+      return hsp < 140;
+    }
+
+    // Apply Random Background Theme from the 6 palette colors
+    function applyRandomTheme(specificColor = null) {
+      const color = specificColor || COLOR_PALETTE[Math.floor(Math.random() * COLOR_PALETTE.length)];
+      document.body.style.backgroundColor = color;
+
+      const dark = isDark(color);
+      const monthTitle = document.getElementById("month-display");
+      const prevBtn = document.getElementById("prev-month-btn");
+      const nextBtn = document.getElementById("next-month-btn");
+      const todayBtn = document.getElementById("today-btn");
+      const shuffleBtn = document.getElementById("color-shuffle-btn");
+      const statsBtn = document.getElementById("open-stats-btn");
+
+      if (dark) {
+        // Plum background styling
+        monthTitle.className = "text-2xl sm:text-3xl font-semibold tracking-tight text-white select-none transition-colors";
+        prevBtn.className = "p-1.5 text-white/70 hover:text-white rounded-full active:scale-95 transition-all";
+        nextBtn.className = "p-1.5 text-white/70 hover:text-white rounded-full active:scale-95 transition-all";
+        todayBtn.className = "text-xs font-medium text-white/80 hover:text-white active:scale-95 transition-colors bg-transparent border-0";
+        shuffleBtn.className = "p-1 text-white/80 hover:text-white active:scale-95 transition-colors bg-transparent border-0";
+        statsBtn.className = "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white hover:text-white bg-transparent border border-white/40 hover:border-white rounded-full transition-all active:scale-95";
+      } else {
+        // Light pastel backgrounds styling
+        monthTitle.className = "text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900 select-none transition-colors";
+        prevBtn.className = "p-1.5 text-slate-400 hover:text-slate-800 rounded-full active:scale-95 transition-all";
+        nextBtn.className = "p-1.5 text-slate-400 hover:text-slate-800 rounded-full active:scale-95 transition-all";
+        todayBtn.className = "text-xs font-medium text-slate-600 hover:text-slate-900 active:scale-95 transition-colors bg-transparent border-0";
+        shuffleBtn.className = "p-1 text-slate-600 hover:text-slate-900 active:scale-95 transition-colors bg-transparent border-0";
+        statsBtn.className = "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 hover:text-slate-900 bg-transparent border border-slate-400/60 hover:border-slate-600 rounded-full transition-all active:scale-95";
+      }
+    }
+
+    // Load records safely
+    function loadRecords() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          return JSON.parse(raw);
+        }
+      } catch (e) {
+        console.warn("localStorage read failed:", e);
+      }
+      return null;
+    }
+
+    // Save records safely
+    function saveRecords(data) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      } catch (e) {
+        console.warn("localStorage write failed:", e);
+      }
+    }
+
+    // Initialize initial sample data if first visit
+    function initDataIfEmpty() {
+      let data = loadRecords();
+      if (!data) {
+        data = {
+          "2026-03-01": "64.2",
+          "2026-03-02": "64.0",
+          "2026-03-03": "63.9",
+          "2026-03-04": "64.1",
+          "2026-03-05": "63.7",
+          "2026-03-06": "63.5",
+          "2026-03-07": "63.6",
+          "2026-03-08": "63.4",
+          "2026-03-09": "63.2",
+          "2026-03-10": "63.3",
+          "2026-03-11": "63.0",
+          "2026-03-12": "62.8",
+          "2026-03-13": "62.9",
+          "2026-03-14": "62.6",
+          "2026-03-15": "62.4",
+          "2026-03-16": "62.3"
+        };
+        saveRecords(data);
+      }
+      return data;
+    }
+
+    // Helper: format YYYY-MM-DD
+    function getDateKey(year, month, day) {
+      const m = String(month + 1).padStart(2, '0');
+      const d = String(day).padStart(2, '0');
+      return `${year}-${m}-${d}`;
+    }
+
+    // Days in a month
+    function getDaysInMonth(year, month) {
+      return new Date(year, month + 1, 0).getDate();
+    }
+
+    // Toast message
+    function showToast(msg) {
+      const toast = document.getElementById("toast");
+      if (!toast) return;
+      toast.textContent = msg;
+      toast.style.opacity = "1";
+      setTimeout(() => {
+        toast.style.opacity = "0";
+      }, 2000);
+    }
+
+    // Render Calendar
+    function renderCalendar() {
+      const displayEl = document.getElementById("month-display");
+      displayEl.textContent = `${monthNames[viewMonth]} ${viewYear}`;
+
+      const gridEl = document.getElementById("calendar-grid");
+      gridEl.innerHTML = "";
+
+      const totalDays = getDaysInMonth(viewYear, viewMonth);
+      const records = loadRecords() || {};
+      const now = new Date();
+      const isCurrentMonth = (now.getFullYear() === viewYear && now.getMonth() === viewMonth);
+
+      for (let day = 1; day <= totalDays; day++) {
+        const dateKey = getDateKey(viewYear, viewMonth, day);
+        const weightVal = records[dateKey] || "";
+        const isToday = isCurrentMonth && (now.getDate() === day);
+
+        // Day Card
+        const card = document.createElement("div");
+        card.className = "day-card flex flex-col items-center justify-between py-2 sm:py-2.5 px-0.5 cursor-pointer h-[88px] sm:h-[106px]" + (isToday ? " today-card" : "");
+        card.dataset.day = day;
+
+        // Top: Date number & today indicator stroke
+        const topWrap = document.createElement("div");
+        topWrap.className = "flex flex-col items-center justify-center";
+
+        const dateNum = document.createElement("span");
+        dateNum.className = "text-[13px] sm:text-[14px] font-normal " + (isToday ? "font-medium text-slate-700" : "text-slate-500") + " leading-none select-none";
+        dateNum.textContent = day;
+        topWrap.appendChild(dateNum);
+
+        if (isToday) {
+          const stroke = document.createElement("div");
+          stroke.className = "w-3.5 h-[2.5px] bg-slate-700 rounded-full mt-1";
+          topWrap.appendChild(stroke);
+        }
+
+        // Middle: Direct Weight Input (no blue stroke, soft shadow on card)
+        const inputWrap = document.createElement("div");
+        inputWrap.className = "w-full px-1 flex items-center justify-center";
+
+        const input = document.createElement("input");
+        input.type = "text";
+        input.inputMode = "decimal";
+        input.value = weightVal;
+        input.placeholder = "";
+        input.dataset.day = day;
+        input.dataset.key = dateKey;
+        input.className = "weight-input w-full text-center bg-transparent border-0 outline-none p-0 text-[15px] sm:text-[16px] font-semibold text-slate-700 placeholder:text-transparent selection:bg-slate-200 cursor-text leading-tight focus:outline-none focus:ring-0";
+
+        // Filter and save input
+        input.addEventListener("input", (e) => {
+          let val = e.target.value.replace(/[^0-9.]/g, '');
+          const parts = val.split('.');
+          if (parts.length > 2) {
+            val = parts[0] + '.' + parts.slice(1).join('');
+          }
+          if (parts.length === 2 && parts[1].length > 1) {
+            val = parts[0] + '.' + parts[1].slice(0, 1);
+          }
+          if (val.length > 5) {
+            val = val.slice(0, 5);
+          }
+          e.target.value = val;
+
+          // Save to localStorage
+          const currentData = loadRecords() || {};
+          if (val.trim() === "") {
+            delete currentData[dateKey];
+          } else {
+            currentData[dateKey] = val;
+          }
+          saveRecords(currentData);
+        });
+
+        // Keyboard navigation (Enter / Tab / Arrows)
+        input.addEventListener("keydown", (e) => {
+          const currentDayNum = parseInt(e.target.dataset.day, 10);
+          if (e.key === "Enter") {
+            e.preventDefault();
+            const nextDayInput = document.querySelector(`input[data-day="${currentDayNum + 1}"]`);
+            if (nextDayInput) {
+              nextDayInput.focus();
+              nextDayInput.select();
+            } else {
+              input.blur();
+            }
+          } else if (e.key === "ArrowRight") {
+            const next = document.querySelector(`input[data-day="${currentDayNum + 1}"]`);
+            if (next && e.target.selectionStart === e.target.value.length) {
+              next.focus();
+              next.select();
+            }
+          } else if (e.key === "ArrowLeft") {
+            const prev = document.querySelector(`input[data-day="${currentDayNum - 1}"]`);
+            if (prev && e.target.selectionStart === 0) {
+              prev.focus();
+              prev.select();
+            }
+          }
+        });
+
+        // Clicking anywhere on card focuses input
+        card.addEventListener("click", (e) => {
+          if (e.target !== input) {
+            input.focus();
+            input.select();
+          }
+        });
+
+        inputWrap.appendChild(input);
+
+        // Bottom: "kg" written small and significantly lighter
+        const unit = document.createElement("span");
+        unit.className = "text-[10px] sm:text-[11px] font-normal text-slate-300 leading-none select-none";
+        unit.textContent = "kg";
+
+        card.appendChild(topWrap);
+        card.appendChild(inputWrap);
+        card.appendChild(unit);
+
+        gridEl.appendChild(card);
+      }
+    }
+
+    // Switch between Monthly and Yearly stats with underline styling
+    function setStatsMode(mode) {
+      currentStatsMode = mode;
+      const monthBtn = document.getElementById("tab-month-btn");
+      const yearBtn = document.getElementById("tab-year-btn");
+
+      if (mode === 'month') {
+        monthBtn.className = "text-xs font-semibold pb-1.5 border-b-2 border-slate-900 text-slate-900 transition-all cursor-pointer";
+        yearBtn.className = "text-xs font-medium pb-1.5 border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition-all cursor-pointer";
+      } else {
+        yearBtn.className = "text-xs font-semibold pb-1.5 border-b-2 border-slate-900 text-slate-900 transition-all cursor-pointer";
+        monthBtn.className = "text-xs font-medium pb-1.5 border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition-all cursor-pointer";
+      }
+      updateStatsDisplay();
+    }
+
+    // Update Statistics Display based on currentStatsMode (with Plum accent #673141)
+    function updateStatsDisplay() {
+      const records = loadRecords() || {};
+      const statsTitle = document.getElementById("stats-title");
+      const statsSubtitle = document.getElementById("stats-subtitle");
+      const metricDiff = document.getElementById("metric-diff");
+      const metricAvg = document.getElementById("metric-avg");
+      const metricMinMax = document.getElementById("metric-minmax");
+      const chartEmpty = document.getElementById("chart-empty-state");
+      const chartCanvas = document.getElementById("stats-chart");
+
+      if (currentStatsMode === 'month') {
+        statsTitle.textContent = `${monthNames[viewMonth]} ${viewYear} 통계`;
+        statsSubtitle.textContent = "한달 몸무게 변화 요약";
+
+        const totalDays = getDaysInMonth(viewYear, viewMonth);
+        const entries = [];
+        for (let day = 1; day <= totalDays; day++) {
+          const k = getDateKey(viewYear, viewMonth, day);
+          if (records[k] && !isNaN(parseFloat(records[k]))) {
+            entries.push({ day, weight: parseFloat(records[k]) });
+          }
+        }
+
+        if (entries.length === 0) {
+          metricDiff.textContent = "—";
+          metricAvg.textContent = "—";
+          metricMinMax.textContent = "—";
+          chartCanvas.style.display = "none";
+          chartEmpty.style.display = "flex";
+          if (chartInstance) {
+            chartInstance.destroy();
+            chartInstance = null;
+          }
+        } else {
+          chartCanvas.style.display = "block";
+          chartEmpty.style.display = "none";
+
+          const startWeight = entries[0].weight;
+          const currentWeight = entries[entries.length - 1].weight;
+          const diff = currentWeight - startWeight;
+          const weights = entries.map(e => e.weight);
+          const minW = Math.min(...weights);
+          const maxW = Math.max(...weights);
+          const avgW = (weights.reduce((a, b) => a + b, 0) / weights.length).toFixed(1);
+
+          metricAvg.textContent = `${avgW} kg`;
+          metricMinMax.textContent = `${minW.toFixed(1)} / ${maxW.toFixed(1)} kg`;
+
+          // Format diff with Plum accent
+          if (diff < 0) {
+            metricDiff.textContent = `${diff.toFixed(1)} kg`;
+          } else if (diff > 0) {
+            metricDiff.textContent = `+${diff.toFixed(1)} kg`;
+          } else {
+            metricDiff.textContent = `0.0 kg`;
+          }
+
+          renderMonthlyChart(entries, totalDays);
+        }
+
+      } else {
+        // Yearly stats
+        statsTitle.textContent = `${viewYear}년 연간 통계`;
+        statsSubtitle.textContent = "1년 몸무게 변화 및 월별 평균";
+
+        const yearEntries = [];
+        const monthlyAverages = [];
+
+        for (let m = 0; m < 12; m++) {
+          const daysInM = getDaysInMonth(viewYear, m);
+          const mWeights = [];
+          for (let d = 1; d <= daysInM; d++) {
+            const k = getDateKey(viewYear, m, d);
+            if (records[k] && !isNaN(parseFloat(records[k]))) {
+              const w = parseFloat(records[k]);
+              yearEntries.push({ dateKey: k, weight: w });
+              mWeights.push(w);
+            }
+          }
+          if (mWeights.length > 0) {
+            const mAvg = mWeights.reduce((a, b) => a + b, 0) / mWeights.length;
+            monthlyAverages.push({ month: m, avg: parseFloat(mAvg.toFixed(1)) });
+          } else {
+            monthlyAverages.push({ month: m, avg: null });
+          }
+        }
+
+        if (yearEntries.length === 0) {
+          metricDiff.textContent = "—";
+          metricAvg.textContent = "—";
+          metricMinMax.textContent = "—";
+          chartCanvas.style.display = "none";
+          chartEmpty.style.display = "flex";
+          if (chartInstance) {
+            chartInstance.destroy();
+            chartInstance = null;
+          }
+        } else {
+          chartCanvas.style.display = "block";
+          chartEmpty.style.display = "none";
+
+          const startWeight = yearEntries[0].weight;
+          const latestWeight = yearEntries[yearEntries.length - 1].weight;
+          const diff = latestWeight - startWeight;
+          const weights = yearEntries.map(e => e.weight);
+          const minW = Math.min(...weights);
+          const maxW = Math.max(...weights);
+          const avgW = (weights.reduce((a, b) => a + b, 0) / weights.length).toFixed(1);
+
+          metricAvg.textContent = `${avgW} kg`;
+          metricMinMax.textContent = `${minW.toFixed(1)} / ${maxW.toFixed(1)} kg`;
+
+          if (diff < 0) {
+            metricDiff.textContent = `${diff.toFixed(1)} kg`;
+          } else if (diff > 0) {
+            metricDiff.textContent = `+${diff.toFixed(1)} kg`;
+          } else {
+            metricDiff.textContent = `0.0 kg`;
+          }
+
+          renderYearlyChart(monthlyAverages);
+        }
+      }
+    }
+
+    // Open Modal
+    function openStatsModal() {
+      updateStatsDisplay();
+      const modal = document.getElementById("stats-modal");
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+    }
+
+    function closeStatsModal() {
+      const modal = document.getElementById("stats-modal");
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+    }
+
+    // Render Monthly Chart with Plum Accent (#673141)
+    function renderMonthlyChart(entries, totalDays) {
+      const ctx = document.getElementById("stats-chart").getContext("2d");
+      if (chartInstance) {
+        chartInstance.destroy();
+      }
+
+      const labels = [];
+      const dataPoints = [];
+      const entryMap = {};
+      entries.forEach(e => {
+        entryMap[e.day] = e.weight;
+      });
+
+      for (let day = 1; day <= totalDays; day++) {
+        labels.push(`${day}`);
+        dataPoints.push(entryMap[day] !== undefined ? entryMap[day] : null);
+      }
+
+      const weights = entries.map(e => e.weight);
+      const minVal = Math.min(...weights);
+      const maxVal = Math.max(...weights);
+      const yMin = Math.max(0, Math.floor(minVal - 1.5));
+      const yMax = Math.ceil(maxVal + 1.5);
+
+      const gradient = ctx.createLinearGradient(0, 0, 0, 200);
+      gradient.addColorStop(0, "rgba(103, 49, 65, 0.22)");
+      gradient.addColorStop(1, "rgba(103, 49, 65, 0.0)");
+
+      chartInstance = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: labels,
+          datasets: [{
+            label: "몸무게",
+            data: dataPoints,
+            spanGaps: true,
+            borderColor: "#673141",
+            borderWidth: 2.2,
+            backgroundColor: gradient,
+            fill: true,
+            tension: 0.35,
+            pointBackgroundColor: "#673141",
+            pointBorderColor: "#ffffff",
+            pointBorderWidth: 1.5,
+            pointRadius: 3,
+            pointHoverRadius: 5
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false
+            },
+            tooltip: {
+              backgroundColor: "rgba(15, 23, 42, 0.85)",
+              padding: 8,
+              cornerRadius: 8,
+              displayColors: false,
+              callbacks: {
+                title: function(items) {
+                  return `${monthNames[viewMonth]} ${items[0].label}일`;
+                },
+                label: function(context) {
+                  return `${context.parsed.y} kg`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: {
+                display: false
+              },
+              ticks: {
+                color: "#94a3b8",
+                font: {
+                  family: 'Inter',
+                  size: 10
+                },
+                maxTicksLimit: 10
+              }
+            },
+            y: {
+              min: yMin,
+              max: yMax,
+              grid: {
+                color: "rgba(226, 232, 240, 0.6)"
+              },
+              ticks: {
+                color: "#94a3b8",
+                font: {
+                  family: 'Inter',
+                  size: 10
+                },
+                callback: function(val) {
+                  return val + " kg";
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Render Yearly Chart with Plum Accent (#673141)
+    function renderYearlyChart(monthlyAverages) {
+      const ctx = document.getElementById("stats-chart").getContext("2d");
+      if (chartInstance) {
+        chartInstance.destroy();
+      }
+
+      const labels = ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"];
+      const dataPoints = monthlyAverages.map(m => m.avg);
+
+      const validAverages = dataPoints.filter(v => v !== null);
+      let yMin = 40;
+      let yMax = 80;
+      if (validAverages.length > 0) {
+        yMin = Math.max(0, Math.floor(Math.min(...validAverages) - 2));
+        yMax = Math.ceil(Math.max(...validAverages) + 2);
+      }
+
+      const gradient = ctx.createLinearGradient(0, 0, 0, 200);
+      gradient.addColorStop(0, "rgba(103, 49, 65, 0.22)");
+      gradient.addColorStop(1, "rgba(103, 49, 65, 0.0)");
+
+      chartInstance = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: labels,
+          datasets: [{
+            label: "월별 평균",
+            data: dataPoints,
+            spanGaps: true,
+            borderColor: "#673141",
+            borderWidth: 2.2,
+            backgroundColor: gradient,
+            fill: true,
+            tension: 0.35,
+            pointBackgroundColor: "#673141",
+            pointBorderColor: "#ffffff",
+            pointBorderWidth: 1.5,
+            pointRadius: 4,
+            pointHoverRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false
+            },
+            tooltip: {
+              backgroundColor: "rgba(15, 23, 42, 0.85)",
+              padding: 8,
+              cornerRadius: 8,
+              displayColors: false,
+              callbacks: {
+                title: function(items) {
+                  return `${viewYear}년 ${items[0].label}`;
+                },
+                label: function(context) {
+                  return `평균 ${context.parsed.y} kg`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: {
+                display: false
+              },
+              ticks: {
+                color: "#94a3b8",
+                font: {
+                  family: 'Inter',
+                  size: 10
+                }
+              }
+            },
+            y: {
+              min: yMin,
+              max: yMax,
+              grid: {
+                color: "rgba(226, 232, 240, 0.6)"
+              },
+              ticks: {
+                color: "#94a3b8",
+                font: {
+                  family: 'Inter',
+                  size: 10
+                },
+                callback: function(val) {
+                  return val + " kg";
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Export Data to CSV and verify browser storage
+    function exportData() {
+      const records = loadRecords() || {};
+      const dates = Object.keys(records).sort();
+      if (dates.length === 0) {
+        showToast("내보낼 몸무게 기록이 없습니다");
+        return;
+      }
+      let csvContent = "\uFEFF날짜,몸무게(kg)\n";
+      dates.forEach(date => {
+        csvContent += `${date},${records[date]}\n`;
+      });
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `몸무게기록_${viewYear}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast("CSV 다운로드 및 브라우저 저장 완료!");
+    }
+
+    // Attach event listeners
+    function setupEventListeners() {
+      // Month navigation
+      document.getElementById("prev-month-btn").addEventListener("click", () => {
+        viewMonth--;
+        if (viewMonth < 0) {
+          viewMonth = 11;
+          viewYear--;
+        }
+        renderCalendar();
+      });
+
+      document.getElementById("next-month-btn").addEventListener("click", () => {
+        viewMonth++;
+        if (viewMonth > 11) {
+          viewMonth = 0;
+          viewYear++;
+        }
+        renderCalendar();
+      });
+
+      document.getElementById("today-btn").addEventListener("click", () => {
+        const now = new Date();
+        viewYear = now.getFullYear();
+        viewMonth = now.getMonth();
+        renderCalendar();
+        showToast("현재 달로 이동했습니다");
+      });
+
+      // Palette Shuffle Button
+      document.getElementById("color-shuffle-btn").addEventListener("click", () => {
+        applyRandomTheme();
+        showToast("배경색이 변경되었습니다");
+      });
+
+      // Stats Modal Triggers
+      document.getElementById("open-stats-btn").addEventListener("click", openStatsModal);
+      document.getElementById("close-stats-btn").addEventListener("click", closeStatsModal);
+      document.getElementById("modal-done-btn").addEventListener("click", closeStatsModal);
+
+      // Stats Tabs (Underline style)
+      document.getElementById("tab-month-btn").addEventListener("click", () => setStatsMode('month'));
+      document.getElementById("tab-year-btn").addEventListener("click", () => setStatsMode('year'));
+
+      // Export Data Button
+      document.getElementById("export-data-btn").addEventListener("click", exportData);
+
+      // Close modal on click outside (빈 공간 누르면 팝업 닫기)
+      document.getElementById("stats-modal").addEventListener("click", (e) => {
+        const modalBox = document.getElementById("stats-modal-box");
+        if (modalBox && !modalBox.contains(e.target)) {
+          closeStatsModal();
+        }
+      });
+
+      // Close modal on Esc key
+      window.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          closeStatsModal();
+        }
+      });
+    }
+
+    // App Initialization
+    function initApp() {
+      applyRandomTheme();
+      initDataIfEmpty();
+      renderCalendar();
+      setupEventListeners();
+    }
+
+    window.addEventListener("DOMContentLoaded", initApp);
+  </script>
+</body>
+</html>
